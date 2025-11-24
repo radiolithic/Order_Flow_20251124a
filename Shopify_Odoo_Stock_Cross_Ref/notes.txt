@@ -1,0 +1,2 @@
+docker compose exec analytics python3 run_script.py Shopify_Odoo_Stock_Cross_Ref
+

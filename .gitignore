@@ -1,0 +1,84 @@
+# Generated Database Files
+*.db
+# *.sqlite
+# *.sqlite3
+# materials.db
+
+# Generated Output Files
+*.xlsx
+*.csv
+!legacy_lookup.xlsx
+!*_upload.csv
+!inventory_export_latest.csv
+
+# Log Files
+*.log
+*.txt
+!requirements.txt
+!notes.txt
+!*.md
+!SCRIPT_GUIDELINES.md
+
+# Python Cache and Build Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Sensitive Configuration Files
+odoosys.py
+shopify_export_cred.py
+*_cred.py
+!*_cred_example.py
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*~
+
+# Output Directories
+# Order_Flow/output/
+# shared-data/output/
+Shopify_Odoo_Stock_Cross_Ref/output/
+Shopify_Odoo_Stock_Cross_Ref/output_old/
+
+# History and IDE Files
+.history/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Excel temporary files
+~$*.xlsx
+~$*.xls
+
+# Analytics database
+# shared-data/sqlite/.~lock.*
+*.zip
+*.db
+*.csv
