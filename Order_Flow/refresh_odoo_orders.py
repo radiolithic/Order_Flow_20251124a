@@ -116,9 +116,10 @@ def fetch_odoo_orders(models_proxy, uid):
         List of sale order dictionaries if successful, None otherwise
     """
     try:
-        # Build domain filter to fetch all orders
-        domain = []
-        print("Fetching all orders from Odoo...")
+        # Build domain filter to fetch orders from the past 90 days
+        cutoff_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        domain = [('date_order', '>=', cutoff_date)]
+        print(f"Fetching orders from the past 90 days (since {cutoff_date}) from Odoo...")
         
         # Search for sale order IDs
         order_ids = models_proxy.execute_kw(
@@ -139,15 +140,28 @@ def fetch_odoo_orders(models_proxy, uid):
             'id', 'name', 'partner_id', 'date_order', 'state', 'client_order_ref',
             'amount_untaxed', 'amount_tax', 'amount_total', 'currency_id',
             'order_line', 'note', 'invoice_status', 'delivery_status',
-            'partner_invoice_id', 'partner_shipping_id', 'origin'
+            'partner_invoice_id', 'partner_shipping_id', 'origin', 'picking_policy'
         ]
         
         # Fetch order details
-        orders = models_proxy.execute_kw(
-            ODOO_DB, uid, ODOO_PASSWORD,
-            'sale.order', 'read',
-            [order_ids, fields]
-        )
+        try:
+            orders = models_proxy.execute_kw(
+                ODOO_DB, uid, ODOO_PASSWORD,
+                'sale.order', 'read',
+                [order_ids, fields]
+            )
+        except Exception as e:
+            # If delivery_status field doesn't exist (Odoo 15), try without it
+            if 'delivery_status' in str(e):
+                print(f"delivery_status field not available (likely Odoo 15). Using picking_policy as fallback...")
+                fields_fallback = [f for f in fields if f != 'delivery_status']
+                orders = models_proxy.execute_kw(
+                    ODOO_DB, uid, ODOO_PASSWORD,
+                    'sale.order', 'read',
+                    [order_ids, fields_fallback]
+                )
+            else:
+                raise
         
         print(f"Retrieved {len(orders)} orders from Odoo")
         
@@ -311,6 +325,9 @@ def flatten_order_data(orders, column_list, models_proxy, uid):
             shopify_order_number = order['client_order_ref']
         
         # Basic order details
+        # For Delivery_Status: use delivery_status if available (Odoo 17), otherwise use picking_policy (Odoo 15)
+        delivery_status = order.get('delivery_status') or order.get('picking_policy')
+
         base_details = {
             'Odoo_ID': order.get('id'),
             'Odoo_Name': order.get('name'),
@@ -320,7 +337,7 @@ def flatten_order_data(orders, column_list, models_proxy, uid):
             'Order_Date': order.get('date_order'),
             'Order_Status': order.get('state'),
             'Payment_Status': order.get('invoice_status'),
-            'Delivery_Status': order.get('delivery_status'),
+            'Delivery_Status': delivery_status,
             'Currency': order.get('currency_id', [None, None])[1],
             'Subtotal': order.get('amount_untaxed'),
             'Tax_Amount': order.get('amount_tax'),
@@ -492,10 +509,10 @@ if __name__ == "__main__":
             SELECT {cols} FROM {temp_table}
         """)
         conn.commit()
-        
+        inserted = cursor.rowcount
+
         # Cleanup and report
         cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
-        inserted = cursor.rowcount
         print(f"Inserted {inserted} new records")
         print(f"Successfully wrote data to table '{TABLE_NAME}' in {DB_FILE}.")
     
