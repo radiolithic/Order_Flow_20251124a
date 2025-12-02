@@ -204,7 +204,7 @@ def create_sale_order(order_ref, customer_name, invoice_address_name, delivery_a
         auto_confirm: If True, confirm order if all items are in stock
 
     Returns:
-        Sale order ID or None if failed
+        Tuple (Sale order ID or None if failed, order_status: 'confirmed' or 'quotation')
     """
     # Get or create customer partner
     customer_id = get_or_create_partner(customer_name)
@@ -229,7 +229,7 @@ def create_sale_order(order_ref, customer_name, invoice_address_name, delivery_a
         order_id = models.execute_kw(db, uid, password, 'sale.order', 'create', [order_data])
     except Exception as e:
         print(f"  ERROR creating order {order_ref}: {e}")
-        return None
+        return None, None
 
     # Add order lines
     lines_created = 0
@@ -265,7 +265,10 @@ def create_sale_order(order_ref, customer_name, invoice_address_name, delivery_a
     if lines_created == 0:
         print(f"  WARNING: No lines created for order {order_ref} - deleting order")
         models.execute_kw(db, uid, password, 'sale.order', 'unlink', [[order_id]])
-        return None
+        return None, None
+
+    # Track order status
+    order_status = 'quotation'
 
     # Check availability and confirm if requested
     if auto_confirm and lines_with_products:
@@ -282,12 +285,13 @@ def create_sale_order(order_ref, customer_name, invoice_address_name, delivery_a
                 # Confirm the order (convert quotation to sales order)
                 models.execute_kw(db, uid, password, 'sale.order', 'action_confirm', [[order_id]])
                 print(f"    ✓ Order CONFIRMED (all items in stock)")
+                order_status = 'confirmed'
             except Exception as e:
                 print(f"    WARNING: Could not confirm order: {e}")
         else:
             print(f"    ⊘ Order left as QUOTATION (insufficient stock)")
 
-    return order_id
+    return order_id, order_status
 
 # ============================================================================
 # IMPORT CONTACTS
@@ -362,7 +366,7 @@ def import_orders(auto_confirm=False):
     """Import orders from 02_orders_upload.csv"""
     if not os.path.exists(ORDERS_FILE):
         print(f"\n⚠ {ORDERS_FILE} not found - skipping order import")
-        return 0
+        return 0, 0, 0
 
     print(f"\n{'='*80}")
     print("IMPORTING ORDERS")
@@ -376,7 +380,7 @@ def import_orders(auto_confirm=False):
 
         if len(df) == 0:
             print("  No orders to import (file is empty)")
-            return 0
+            return 0, 0, 0
 
         print(f"  Found {len(df)} line(s) to process")
 
@@ -389,6 +393,8 @@ def import_orders(auto_confirm=False):
         current_lines = []
 
         orders_created = 0
+        orders_confirmed = 0
+        orders_quotation = 0
         orders_skipped = 0
 
         for idx, row in df.iterrows():
@@ -406,7 +412,7 @@ def import_orders(auto_confirm=False):
                         print(f"  ⊘ Skipped: {current_order} (already exists)")
                         orders_skipped += 1
                     else:
-                        order_id = create_sale_order(
+                        order_id, order_status = create_sale_order(
                             current_order, current_customer, current_invoice_addr,
                             current_delivery_addr, current_date, current_lines,
                             auto_confirm=auto_confirm
@@ -414,6 +420,10 @@ def import_orders(auto_confirm=False):
                         if order_id:
                             print(f"  ✓ Created: {current_order} (ID: {order_id}, {len(current_lines)} line(s))")
                             orders_created += 1
+                            if order_status == 'confirmed':
+                                orders_confirmed += 1
+                            else:
+                                orders_quotation += 1
                         else:
                             print(f"  ✗ Failed: {current_order}")
 
@@ -447,7 +457,7 @@ def import_orders(auto_confirm=False):
                 print(f"  ⊘ Skipped: {current_order} (already exists)")
                 orders_skipped += 1
             else:
-                order_id = create_sale_order(
+                order_id, order_status = create_sale_order(
                     current_order, current_customer, current_invoice_addr,
                     current_delivery_addr, current_date, current_lines,
                     auto_confirm=auto_confirm
@@ -455,17 +465,21 @@ def import_orders(auto_confirm=False):
                 if order_id:
                     print(f"  ✓ Created: {current_order} (ID: {order_id}, {len(current_lines)} line(s))")
                     orders_created += 1
+                    if order_status == 'confirmed':
+                        orders_confirmed += 1
+                    else:
+                        orders_quotation += 1
                 else:
                     print(f"  ✗ Failed: {current_order}")
 
-        print(f"\n  Summary: {orders_created} created, {orders_skipped} skipped")
-        return orders_created
+        print(f"\n  Summary: {orders_created} created ({orders_confirmed} ORDERS, {orders_quotation} QUOTATIONS), {orders_skipped} skipped")
+        return orders_created, orders_confirmed, orders_quotation
 
     except Exception as e:
         print(f"  ERROR reading {ORDERS_FILE}: {e}")
         import traceback
         traceback.print_exc()
-        return 0
+        return 0, 0, 0
 
 # ============================================================================
 # MAIN
@@ -503,7 +517,7 @@ Examples:
     contacts_imported = import_contacts()
 
     # Then import orders
-    orders_imported = import_orders(auto_confirm=args.auto_confirm)
+    orders_imported, orders_confirmed, orders_quotation = import_orders(auto_confirm=args.auto_confirm)
 
     # Final summary
     print("\n" + "="*80)
@@ -511,6 +525,9 @@ Examples:
     print("="*80)
     print(f"  Contacts imported: {contacts_imported}")
     print(f"  Orders imported:   {orders_imported}")
+    if orders_imported > 0:
+        print(f"    - ORDERS (confirmed):   {orders_confirmed}")
+        print(f"    - QUOTATIONS:           {orders_quotation}")
     print("="*80)
 
     if orders_imported > 0:
