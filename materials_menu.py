@@ -79,6 +79,56 @@ def run_script(script_name, description):
     # Pause to let user see the results
     input(f"\n{Colors.YELLOW}Press Enter to return to the menu...{Colors.ENDC}")
 
+def run_shopify_import():
+    """Run Shopify import with pre-flight check and anomaly review options."""
+    import subprocess
+    import re
+
+    # Run preflight check
+    try:
+        result = subprocess.run(['python', 'shopify_import_preflight.py'],
+                              capture_output=True, text=True, cwd=SCRIPT_DIR)
+        output = result.stdout
+
+        # Extract the choice from output
+        choice_match = re.search(r'CHOICE:(\w+)', output)
+        if not choice_match:
+            print(f"\n{Colors.RED}Error running preflight check{Colors.ENDC}")
+            input(f"\n{Colors.YELLOW}Press Enter to return to the menu...{Colors.ENDC}")
+            return
+
+        choice = choice_match.group(1)
+
+        if choice == 'CANCEL':
+            print(f"\n{Colors.YELLOW}Import cancelled by user.{Colors.ENDC}")
+            time.sleep(1.5)
+            return
+
+        # Run the appropriate import based on choice
+        if choice == 'RUN_SKIP_ALL':
+            # Run with auto-skip environment variable
+            print(f"\n{Colors.BLUE}Running import with AUTO-SKIP mode...{Colors.ENDC}")
+            print(f"{Colors.YELLOW}{'=' * 80}{Colors.ENDC}")
+
+            env = os.environ.copy()
+            env['SHOPIFY_IMPORT_AUTO_SKIP'] = '1'
+
+            if os.name == 'nt':
+                subprocess.call(['python', 'process_shopify_exports.py'],
+                              cwd=SCRIPT_DIR, env=env)
+            else:
+                subprocess.call(['python', 'process_shopify_exports.py'],
+                              cwd=SCRIPT_DIR, env=env)
+        else:
+            # Default interactive mode
+            run_script("RUN_IMPORT", "Importing Shopify Data")
+
+    except Exception as e:
+        print(f"\n{Colors.RED}Error: {e}{Colors.ENDC}")
+
+    if choice != 'RUN_SKIP_ALL':
+        input(f"\n{Colors.YELLOW}Press Enter to return to the menu...{Colors.ENDC}")
+
 def main_menu():
     """Display the main menu and handle user input."""
     while True:
@@ -123,7 +173,7 @@ def main_menu():
             print(f"\n{Colors.YELLOW}Exiting Materials Management System. Goodbye!{Colors.ENDC}")
             break
         elif choice == '1':
-            run_script("RUN_IMPORT", "Importing Shopify Data")
+            run_shopify_import()
         elif choice == '2':
             run_script("RUN_ORDER_FLOW", "Order Flow Process")
         elif choice == '3':

@@ -102,6 +102,15 @@ def search_odoo_products(search_term):
 
 def interactive_sku_lookup(lineitem_name, order_name, current_sku='', page_size=10):
     """Interactive SKU lookup - prompt user to find correct SKU in Odoo"""
+    # Check if auto-skip mode is enabled
+    auto_skip = os.environ.get('SHOPIFY_IMPORT_AUTO_SKIP', '0') == '1'
+
+    if auto_skip:
+        # Auto-skip mode: skip this item without prompting
+        print(f"⊘ Auto-skipping: {lineitem_name}")
+        sku_cache[lineitem_name] = None
+        return None
+
     print(f"\n{'='*80}")
     print(f"SKU Issue Found")
     print(f"{'='*80}")
@@ -416,7 +425,9 @@ try:
 
     # Check for skipped rows and offer second chance
     skipped_rows = df[df['Lineitem sku'] == '__SKIP__']
-    if len(skipped_rows) > 0:
+    auto_skip = os.environ.get('SHOPIFY_IMPORT_AUTO_SKIP', '0') == '1'
+
+    if len(skipped_rows) > 0 and not auto_skip:
         print(f"\n{'='*80}")
         print(f"SECOND CHANCE: {len(skipped_rows)} line item(s) were skipped")
         print(f"{'='*80}")
