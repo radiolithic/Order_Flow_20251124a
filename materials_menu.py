@@ -89,31 +89,27 @@ def main_menu():
         print(f"    Process Shopify exports and update the database")
         print()
 
-        print(f"{Colors.BOLD}[2] {Colors.BLUE}View Failed Orders{Colors.ENDC}")
-        print(f"    Review orders with unresolved SKU issues")
-        print()
-
-        print(f"{Colors.BOLD}[3] {Colors.BLUE}Run Order Flow{Colors.ENDC}")
+        print(f"{Colors.BOLD}[2] {Colors.BLUE}Run Order Flow{Colors.ENDC}")
         print(f"    Synchronize and report on orders between Shopify and Odoo")
         print()
 
-        print(f"{Colors.BOLD}[4] {Colors.BLUE}Stock Cross Reference{Colors.ENDC}")
+        print(f"{Colors.BOLD}[3] {Colors.BLUE}Stock Cross Reference{Colors.ENDC}")
         print(f"    Generate inventory reconciliation between Shopify and Odoo")
         print()
 
-        print(f"{Colors.BOLD}[5] {Colors.BLUE}Generate Pull Sheet{Colors.ENDC}")
+        print(f"{Colors.BOLD}[4] {Colors.BLUE}Generate Pull Sheet{Colors.ENDC}")
         print(f"    Create pull sheet from Transfer (stock.picking).csv file")
         print()
 
-        print(f"{Colors.BOLD}[6] {Colors.BLUE}Create import files from latest orders{Colors.ENDC}")
+        print(f"{Colors.BOLD}[5] {Colors.BLUE}Create import files from latest orders{Colors.ENDC}")
         print(f"    Fetch from Shopify API, view sync status, generate CSV files")
         print()
 
-        print(f"{Colors.BOLD}[7] {Colors.BLUE}Import to Odoo (as Quotations){Colors.ENDC}")
+        print(f"{Colors.BOLD}[6] {Colors.BLUE}Import to Odoo (as Quotations){Colors.ENDC}")
         print(f"    Import CSV files to Odoo without auto-confirmation")
         print()
 
-        print(f"{Colors.BOLD}[8] {Colors.BLUE}Import to Odoo (Confirm if in Stock){Colors.ENDC}")
+        print(f"{Colors.BOLD}[7] {Colors.BLUE}Import to Odoo (Confirm if in Stock){Colors.ENDC}")
         print(f"    Import CSV files and auto-confirm orders with all items available")
         print()
 
@@ -121,7 +117,7 @@ def main_menu():
         print()
 
         # Get user selection
-        choice = input(f"{Colors.GREEN}Enter your choice (0-8): {Colors.ENDC}")
+        choice = input(f"{Colors.GREEN}Enter your choice (0-7): {Colors.ENDC}")
         
         if choice == '0':
             print(f"\n{Colors.YELLOW}Exiting Materials Management System. Goodbye!{Colors.ENDC}")
@@ -129,33 +125,16 @@ def main_menu():
         elif choice == '1':
             run_script("RUN_IMPORT", "Importing Shopify Data")
         elif choice == '2':
-            # View failed orders file
-            failed_orders_file = os.path.join(SCRIPT_DIR, 'failed_orders.txt')
-            if os.path.exists(failed_orders_file):
-                print(f"\n{Colors.BLUE}Viewing failed orders...{Colors.ENDC}")
-                print(f"{Colors.YELLOW}{'=' * 80}{Colors.ENDC}")
-                try:
-                    subprocess.call(['less', failed_orders_file])
-                except Exception as e:
-                    # If less fails, just cat the file
-                    print(f"\n{Colors.YELLOW}Could not open with 'less', displaying file:{Colors.ENDC}\n")
-                    with open(failed_orders_file, 'r') as f:
-                        print(f.read())
-                input(f"\n{Colors.YELLOW}Press Enter to return to the menu...{Colors.ENDC}")
-            else:
-                print(f"\n{Colors.GREEN}No failed orders found. All orders processed successfully!{Colors.ENDC}")
-                time.sleep(2)
-        elif choice == '3':
             run_script("RUN_ORDER_FLOW", "Order Flow Process")
-        elif choice == '4':
+        elif choice == '3':
             run_script("RUN_STOCK_XREF", "Stock Cross Reference")
-        elif choice == '5':
+        elif choice == '4':
             run_script("RUN_PULL", "Generating Pull Sheet")
-        elif choice == '6':
+        elif choice == '5':
             run_script("RUN_LIVE_IMPORT", "Create import files from latest orders")
-        elif choice == '7':
+        elif choice == '6':
             run_script("RUN_IMPORT_TO_ODOO", "Import to Odoo (as Quotations)")
-        elif choice == '8':
+        elif choice == '7':
             run_script("RUN_IMPORT_TO_ODOO_CONFIRM", "Import to Odoo (Confirm if in Stock)")
         else:
             print(f"\n{Colors.RED}Invalid choice. Please try again.{Colors.ENDC}")
