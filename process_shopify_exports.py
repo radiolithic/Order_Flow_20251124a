@@ -510,18 +510,21 @@ try:
     # Remove any remaining __SKIP__ markers (shouldn't be any, but safety check)
     df = df[df['Lineitem sku'] != '__SKIP__']
 
-    # Count unique orders before and after
+    # Count unique orders in remaining dataframe (after SKU filtering)
+    remaining_orders = df['Name'].fillna('').replace('', pd.NA).dropna().unique()
+    processed_order_count = len(remaining_orders)
+
+    # Count from original input for reference
     total_orders_in_input = df_in['Name'].fillna('').replace('', pd.NA).dropna().unique()
     total_order_count = len(total_orders_in_input)
     skipped_order_count = len(skipped_order_names)
-    processed_order_count = total_order_count - skipped_order_count
     excluded_order_count = len(excluded_orders)
     already_imported_count = len(already_imported)
 
-    # Check if everything was skipped
-    if processed_order_count == 0:
+    # Check if there are any line items left to process
+    if len(df) == 0:
         print(f"\n{'='*80}")
-        print("IMPORT INCOMPLETE - ALL ORDERS SKIPPED")
+        print("IMPORT INCOMPLETE - NO ITEMS TO PROCESS")
         print(f"{'='*80}")
         print(f"\nOrders processed: 0")
         if already_imported_count > 0:
@@ -532,10 +535,10 @@ try:
             print(f"Orders skipped:   {skipped_order_count} (unresolved SKU issues)")
         total_in_file = total_order_count + excluded_order_count + skipped_order_count + already_imported_count
         print(f"Total in file:    {total_in_file}")
-        print("\n⚠  No import files were created.")
+        print("\n! No import files were created.")
         print("\nNext steps:")
         if skipped_order_count > 0:
-            print("  1. View failed orders: Menu option [2] or 'less failed_orders.txt'")
+            print("  1. View failed orders in failed_orders.txt")
             print("  2. Fix SKU issues in Odoo or Shopify")
             print("  3. Re-run import to process the failed orders")
         else:
