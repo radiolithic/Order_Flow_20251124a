@@ -162,10 +162,10 @@ def display_preflight_menu():
         return 'run_interactive'
 
     # Display anomalies found
-    print(f"\n⚠ Found {count} anomaly/anomalies to review:\n")
+    print(f"\n! Found {count} anomaly/anomalies to review:\n")
 
     for anomaly in details:
-        print(f"  • {anomaly['type']}: {anomaly['count']} issue(s)")
+        print(f"  * {anomaly['type']}: {anomaly['count']} issue(s)")
         for order in anomaly['orders']:
             print(f"    - {order}")
         if anomaly['count'] > 3:
