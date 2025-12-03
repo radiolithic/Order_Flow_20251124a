@@ -199,14 +199,13 @@ def display_preflight_menu():
 if __name__ == "__main__":
     choice = display_preflight_menu()
 
-    # Output choice as exit code or environment variable approach
-    # We'll use print to communicate with the wrapper script
-    if choice == 'run_interactive':
-        print("CHOICE:RUN_INTERACTIVE")
-        sys.exit(0)
-    elif choice == 'run_skip_all':
-        print("CHOICE:RUN_SKIP_ALL")
-        sys.exit(0)
-    else:  # cancel
-        print("CHOICE:CANCEL")
-        sys.exit(0)
+    # Write choice to file so parent process can read it
+    with open('.preflight_choice', 'w') as f:
+        if choice == 'run_interactive':
+            f.write("RUN_INTERACTIVE")
+        elif choice == 'run_skip_all':
+            f.write("RUN_SKIP_ALL")
+        else:  # cancel
+            f.write("CANCEL")
+
+    sys.exit(0)

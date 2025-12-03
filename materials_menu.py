@@ -82,23 +82,33 @@ def run_script(script_name, description):
 def run_shopify_import():
     """Run Shopify import with pre-flight check and anomaly review options."""
     import subprocess
-    import re
 
-    # Run preflight check
     choice = None
     try:
+        # Run preflight check (user will see output and provide input)
         result = subprocess.run(['python', 'shopify_import_preflight.py'],
-                              capture_output=True, text=True, cwd=SCRIPT_DIR)
-        output = result.stdout
+                              cwd=SCRIPT_DIR)
 
-        # Extract the choice from output
-        choice_match = re.search(r'CHOICE:(\w+)', output)
-        if not choice_match:
-            print(f"\n{Colors.RED}Error running preflight check{Colors.ENDC}")
+        if result.returncode != 0:
+            print(f"\n{Colors.RED}Preflight check failed{Colors.ENDC}")
             input(f"\n{Colors.YELLOW}Press Enter to return to the menu...{Colors.ENDC}")
             return
 
-        choice = choice_match.group(1)
+        # Read the choice from file
+        choice_file = os.path.join(SCRIPT_DIR, '.preflight_choice')
+        if not os.path.exists(choice_file):
+            print(f"\n{Colors.RED}Could not determine user choice{Colors.ENDC}")
+            input(f"\n{Colors.YELLOW}Press Enter to return to the menu...{Colors.ENDC}")
+            return
+
+        with open(choice_file, 'r') as f:
+            choice = f.read().strip()
+
+        # Clean up the choice file
+        try:
+            os.remove(choice_file)
+        except:
+            pass
 
         if choice == 'CANCEL':
             print(f"\n{Colors.YELLOW}Import cancelled by user.{Colors.ENDC}")
