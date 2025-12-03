@@ -454,36 +454,31 @@ try:
                     df.loc[mask, 'Lineitem sku'] = corrected_sku
                     print(f"✓ Applied {corrected_sku} to all instances of this product")
 
-    # Final check for remaining skipped rows
+    # Final check for remaining items with unresolved SKUs
     still_skipped = df[df['Lineitem sku'] == '__SKIP__']
-    skipped_order_names = []
+    skipped_items_count = len(still_skipped)
 
-    if len(still_skipped) > 0:
-        # Get complete order records for skipped items
-        skipped_order_names = still_skipped['Name'].unique()
+    if skipped_items_count > 0:
+        # Get orders with unresolved SKU issues
+        orders_with_issues = still_skipped['Name'].unique()
 
         print(f"\n{'='*80}")
-        print(f"UNRESOLVED: {len(skipped_order_names)} order(s) with unresolved SKU issues")
+        print(f"UNRESOLVED: {skipped_items_count} line item(s) with unresolved SKU issues")
         print(f"{'='*80}")
-        print(f"Orders: {', '.join(skipped_order_names)}")
-        print("\nThese orders will be:")
-        print("  1. REMOVED from import files (will not be uploaded to Odoo)")
-        print("  2. SAVED back to orders_export.csv for next run")
-        print("  3. Listed in failed_orders.txt for review")
+        for order_name in sorted(orders_with_issues):
+            items = still_skipped[still_skipped['Name'] == order_name]
+            print(f"Order {order_name}: {len(items)} item(s) need SKU resolution")
 
-        # Write failed orders back to orders_export.csv
-        failed_order_records = df_in[df_in['Name'].isin(skipped_order_names)]
-        failed_order_records.to_csv('orders_export.csv', index=False)
-        print(f"\n✓ Saved {len(failed_order_records)} order records back to orders_export.csv")
-
-        # Write human-readable summary
+        # Write human-readable summary for reference
         with open('failed_orders.txt', 'w') as f:
             f.write("="*80 + "\n")
-            f.write("FAILED ORDERS - Unresolved SKU Issues\n")
+            f.write("ITEMS WITH UNRESOLVED SKU ISSUES\n")
             f.write("="*80 + "\n\n")
             f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write("These items were included in the import files but have SKU issues.\n")
+            f.write("You will need to correct the SKU values before uploading to Odoo.\n\n")
 
-            for order_name in sorted(skipped_order_names):
+            for order_name in sorted(orders_with_issues):
                 f.write(f"\nOrder: {order_name}\n")
                 f.write("-" * 40 + "\n")
                 order_items = still_skipped[still_skipped['Name'] == order_name]
@@ -491,33 +486,36 @@ try:
                     f.write(f"  Product: {item['Lineitem name']}\n")
                     f.write(f"  Quantity: {item['Lineitem quantity']}\n")
                     f.write(f"  Price: ${item['Lineitem price']}\n")
-                    f.write(f"  Issue: SKU missing or invalid\n\n")
+                    f.write(f"  Current SKU: {item['Lineitem sku']}\n")
+                    f.write(f"  Action: Find correct SKU in Odoo and update in import file\n\n")
 
             f.write("\n" + "="*80 + "\n")
             f.write("TO RESOLVE:\n")
             f.write("="*80 + "\n")
-            f.write("1. Create missing products in Odoo OR update SKUs in Shopify\n")
-            f.write("2. Run the import script again\n")
-            f.write("3. The script will reprocess orders_export.csv\n\n")
-            f.write("To view this file: less failed_orders.txt\n")
+            f.write("1. Open 02_orders_upload.csv in a spreadsheet\n")
+            f.write("2. Find items marked with __SKIP__ in the 'Order Lines/Product' column\n")
+            f.write("3. Search Odoo for the correct product SKU\n")
+            f.write("4. Replace __SKIP__ with the correct SKU code\n")
+            f.write("5. Save and upload the corrected CSV to Odoo\n\n")
 
-        print(f"✓ Created failed_orders.txt (view with: less failed_orders.txt)")
+        print(f"✓ Created failed_orders.txt for reference")
 
-        # Remove failed orders from processing
-        df = df[~df['Name'].isin(skipped_order_names)]
-        print(f"\n✓ Removed failed orders from import files")
+        # Replace __SKIP__ markers with empty string so they appear as missing SKUs
+        # User can then fill these in from the CSV editor
+        df.loc[df['Lineitem sku'] == '__SKIP__', 'Lineitem sku'] = ''
+        print(f"✓ Included unresolved items in import files (marked with blank SKU)")
+    else:
+        # No unresolved items - still create the summary file if it exists from before
+        if os.path.exists('failed_orders.txt'):
+            os.remove('failed_orders.txt')
 
-    # Remove any remaining __SKIP__ markers (shouldn't be any, but safety check)
-    df = df[df['Lineitem sku'] != '__SKIP__']
-
-    # Count unique orders in remaining dataframe (after SKU filtering)
+    # Count unique orders in remaining dataframe
     remaining_orders = df['Name'].fillna('').replace('', pd.NA).dropna().unique()
     processed_order_count = len(remaining_orders)
 
     # Count from original input for reference
     total_orders_in_input = df_in['Name'].fillna('').replace('', pd.NA).dropna().unique()
     total_order_count = len(total_orders_in_input)
-    skipped_order_count = len(skipped_order_names)
     excluded_order_count = len(excluded_orders)
     already_imported_count = len(already_imported)
 
@@ -531,19 +529,12 @@ try:
             print(f"Already in Odoo:  {already_imported_count} (skipped)")
         if excluded_order_count > 0:
             print(f"Orders excluded:  {excluded_order_count} (refunded/unpaid/already fulfilled)")
-        if skipped_order_count > 0:
-            print(f"Orders skipped:   {skipped_order_count} (unresolved SKU issues)")
-        total_in_file = total_order_count + excluded_order_count + skipped_order_count + already_imported_count
+        total_in_file = total_order_count + excluded_order_count + already_imported_count
         print(f"Total in file:    {total_in_file}")
         print("\n! No import files were created.")
         print("\nNext steps:")
-        if skipped_order_count > 0:
-            print("  1. View failed orders in failed_orders.txt")
-            print("  2. Fix SKU issues in Odoo or Shopify")
-            print("  3. Re-run import to process the failed orders")
-        else:
-            print("  1. All orders were excluded (refunded/unpaid/already fulfilled)")
-            print("  2. Clean up your Shopify export to include only paid, unfulfilled orders")
+        print("  1. Clean up your Shopify export to include only paid, unfulfilled orders")
+        print("  2. Re-run import when you have valid orders")
         print(f"{'='*80}")
         sys.exit(1)  # Exit with error code
 
