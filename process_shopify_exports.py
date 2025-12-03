@@ -638,16 +638,16 @@ try:
         print(f"Already in Odoo:  {already_imported_count} (skipped)")
     if excluded_order_count > 0:
         print(f"Orders excluded:  {excluded_order_count} (refunded/unpaid/already fulfilled)")
-    if skipped_order_count > 0:
-        print(f"Orders skipped:   {skipped_order_count} (unresolved SKU issues)")
-    total_in_file = total_order_count + excluded_order_count + skipped_order_count + already_imported_count
+    if skipped_items_count > 0:
+        print(f"Items with SKU issues: {skipped_items_count} (included in import files)")
+    total_in_file = total_order_count + excluded_order_count + already_imported_count
     print(f"Total in file:    {total_in_file}")
 
     if os.path.exists('failed_orders.txt'):
-        print("\n⚠ SKIPPED ORDERS:")
-        print("  • View: Menu option [2] or 'less failed_orders.txt'")
-        print("  • Saved to orders_export.csv for next run")
-        print("  • Fix issues in Odoo/Shopify and re-run import")
+        print("\n! ITEMS REQUIRING SKU CORRECTION:")
+        print("  * See failed_orders.txt for details")
+        print("  * Edit SKU values in 02_orders_upload.csv before uploading")
+        print("  * Review failed_orders.txt for items that need fixing")
 
     print("\nFiles created:")
     if final_contact_count == 0:
