@@ -85,6 +85,7 @@ def run_shopify_import():
     import re
 
     # Run preflight check
+    choice = None
     try:
         result = subprocess.run(['python', 'shopify_import_preflight.py'],
                               capture_output=True, text=True, cwd=SCRIPT_DIR)
@@ -119,14 +120,15 @@ def run_shopify_import():
             else:
                 subprocess.call(['python', 'process_shopify_exports.py'],
                               cwd=SCRIPT_DIR, env=env)
+
+            # Pause after auto-skip import
+            input(f"\n{Colors.YELLOW}Press Enter to return to the menu...{Colors.ENDC}")
         else:
-            # Default interactive mode
+            # Default interactive mode (RUN_INTERACTIVE)
             run_script("RUN_IMPORT", "Importing Shopify Data")
 
     except Exception as e:
         print(f"\n{Colors.RED}Error: {e}{Colors.ENDC}")
-
-    if choice != 'RUN_SKIP_ALL':
         input(f"\n{Colors.YELLOW}Press Enter to return to the menu...{Colors.ENDC}")
 
 def main_menu():
